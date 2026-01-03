@@ -1,0 +1,172 @@
+Option Explicit
+
+Public Sub RUN_FIFO_EMAIL_DRAFTS()
+    On Error GoTo EH
+
+    Dim wb As Workbook
+    Set wb = ThisWorkbook
+
+    Dim wsMain As Worksheet
+    Dim wsBody As Worksheet
+    Dim wsCC As Worksheet
+    Dim wsVIP As Worksheet
+
+    Set wsMain = wb.Sheets("TO+Subject+Name PER RSM")
+    Set wsBody = wb.Sheets("Email Body PER RSM")
+    Set wsCC = wb.Sheets("CC (ASM,ITSupport,Auditor) Per")
+    Set wsVIP = wb.Sheets("CC (VIP) ALL RSMS")
+
+    Dim olApp As Object
+    Set olApp = GetOutlookApp()
+    If olApp Is Nothing Then
+        MsgBox "Outlook not available", vbCritical
+        Exit Sub
+    End If
+
+    Dim vipCC As String
+    vipCC = Trim(wsVIP.Range("A2").Value)
+
+    Dim bodyTemplate As String
+    bodyTemplate = ReadBody(wsBody)
+
+    Dim fifoRoot As String
+    fifoRoot = GetFIFOFolder(wb.Path)
+    If fifoRoot = "" Then
+        MsgBox "FIFO_Per_RSM folder not found", vbCritical
+        Exit Sub
+    End If
+
+    Dim lastRow As Long
+    lastRow = wsMain.Cells(wsMain.Rows.Count, 1).End(xlUp).Row
+
+    Dim r As Long
+    Dim draftCount As Long
+
+    For r = 2 To lastRow
+
+        Dim rsmCode As String
+        Dim toEmail As String
+        Dim subjectTxt As String
+        Dim rsmName As String
+
+        rsmCode = Trim(wsMain.Cells(r, 1).Value)
+        toEmail = Trim(wsMain.Cells(r, 2).Value)
+        subjectTxt = Trim(wsMain.Cells(r, 3).Value)
+        rsmName = Trim(wsMain.Cells(r, 4).Value)
+
+        If rsmCode = "" Or toEmail = "" Or subjectTxt = "" Or rsmName = "" Then GoTo NextR
+
+        subjectTxt = Replace(subjectTxt, "[TIME STAMP]", Format(Date, "dd-mm-yyyy"))
+
+        Dim rsmFolder As String
+        rsmFolder = fifoRoot & "\" & rsmCode
+        If Dir(rsmFolder, vbDirectory) = "" Then GoTo NextR
+
+        Dim attachFile As String
+        attachFile = GetFirstExcel(rsmFolder)
+        If attachFile = "" Then GoTo NextR
+
+        Dim finalBody As String
+        finalBody = bodyTemplate
+        finalBody = Replace(finalBody, "{NAME}", rsmName)
+        finalBody = Replace(finalBody, "[RSM NAME]", rsmName)
+
+        ' normalize spacing around the note line
+        finalBody = Replace(finalBody, _
+            vbCrLf & vbCrLf & "يرجى التكرم بالاطلاع، وإعلامي في حال وجود أي ملاحظات." & vbCrLf & vbCrLf, _
+            vbCrLf & "يرجى التكرم بالاطلاع، وإعلامي في حال وجود أي ملاحظات." & vbCrLf)
+
+        Dim mail As Object
+        Set mail = olApp.CreateItem(0)
+
+        With mail
+            .To = toEmail
+            .CC = JoinEmails(vipCC, GetRSM_CC(wsCC, rsmCode))
+            .Subject = subjectTxt
+            .HTMLBody = ToHTML_Plain(finalBody)
+            .Attachments.Add attachFile
+            .Save   ' DRAFT ONLY
+        End With
+
+        draftCount = draftCount + 1
+
+NextR:
+    Next r
+
+    MsgBox draftCount & " FIFO draft emails created (NOT SENT).", vbInformation
+    Exit Sub
+
+EH:
+    MsgBox "Stopped safely: " & Err.Description, vbCritical
+End Sub
+
+'================ PLAIN HTML =================
+
+Private Function ToHTML_Plain(t As String) As String
+    Dim html As String
+    html = "<html><body style='font-family:Calibri;font-size:14pt;line-height:1.6;direction:rtl;'>"
+    html = html & Replace(t, vbCrLf, "<br>")
+    html = html & "</body></html>"
+    ToHTML_Plain = html
+End Function
+
+'================ HELPERS =================
+
+Private Function ReadBody(ws As Worksheet) As String
+    Dim r As Long, s As String
+    For r = 1 To ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+        s = s & ws.Cells(r, 1).Value & vbCrLf
+    Next r
+    ReadBody = s
+End Function
+
+Private Function GetOutlookApp() As Object
+    On Error Resume Next
+    Set GetOutlookApp = GetObject(, "Outlook.Application")
+    If GetOutlookApp Is Nothing Then
+        Set GetOutlookApp = CreateObject("Outlook.Application")
+    End If
+End Function
+
+Private Function GetFIFOFolder(basePath As String) As String
+    Dim f As Object
+    For Each f In CreateObject("Scripting.FileSystemObject").GetFolder(basePath).SubFolders
+        If LCase(f.Name) Like "fifo_per_rsm*" Then
+            GetFIFOFolder = f.Path
+            Exit Function
+        End If
+    Next f
+End Function
+
+Private Function GetFirstExcel(folderPath As String) As String
+    Dim f As Object
+    For Each f In CreateObject("Scripting.FileSystemObject").GetFolder(folderPath).Files
+        If LCase(f.Name) Like "*.xls*" Then
+            GetFirstExcel = f.Path
+            Exit Function
+        End If
+    Next f
+End Function
+
+Private Function GetRSM_CC(ws As Worksheet, rsmCode As String) As String
+    Dim r As Long
+    For r = 2 To ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+        If Trim(ws.Cells(r, 1).Value) = rsmCode Then
+            GetRSM_CC = JoinEmails(ws.Cells(r, 3).Value, _
+                          JoinEmails(ws.Cells(r, 4).Value, ws.Cells(r, 5).Value))
+            Exit Function
+        End If
+    Next r
+End Function
+
+Private Function JoinEmails(a As String, b As String) As String
+    a = Trim(a)
+    b = Trim(b)
+    If a = "" Then
+        JoinEmails = b
+    ElseIf b = "" Then
+        JoinEmails = a
+    Else
+        JoinEmails = a & "; " & b
+    End If
+End Function
