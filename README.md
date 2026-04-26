@@ -99,3 +99,23 @@ MIT License - Free to use and modify
 ---
 
 ⭐ **Star if useful!**
+## PERSONAL.XLSB Quick Setup
+
+Exactly. That workflow is correct.
+
+Your clean version is:
+
+1. Unhide `PERSONAL.XLSB`
+2. Press `Alt + F11`
+3. Paste the VBA into a module in `PERSONAL.XLSB`
+4. Replace `ThisWorkbook` with `ActiveWorkbook` where needed
+5. Save
+6. Hide `PERSONAL.XLSB` again
+7. In Excel Options > Quick Access Toolbar
+8. Change command list to `Macros`
+9. Add the macro you want
+10. Click `Modify...` to change the name and icon
+11. Done
+
+That is the best setup for your daily Excel automation across all files.
+
