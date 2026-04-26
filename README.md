@@ -32,9 +32,10 @@ Converts raw inventory data into:
 
 ### Step 1: Generate Reports
 1. Open your inventory file (use template provided)
-2. Press `Alt + F8` → Select `FIFO_ULTIMATE_OneClick`
-3. Click **Run**
-4. Output: Master report + individual RSM files created
+2. If running from `PERSONAL.XLSB` or the Quick Access Toolbar, make sure the FIFO workbook is the **active workbook**
+3. Press `Alt + F8` → Select `FIFO_ULTIMATE_OneClick`
+4. Click **Run**
+5. Output: Master report + individual RSM files created
 
 ### Step 2: Send Emails
 1. Open `Email Template FIFO.xlsx`
@@ -79,6 +80,9 @@ Converts raw inventory data into:
 
 **Problem:** Macro not found  
 **Solution:** Make sure you imported the VBA files (Step 1 in Setup)
+
+**Problem:** Could not find sheet named `Total`  
+**Solution:** Activate the correct FIFO workbook first. The active workbook must contain the `Total` sheet.
 
 **Problem:** Security warning  
 **Solution:** Enable macros in Excel settings

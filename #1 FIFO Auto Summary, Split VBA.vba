@@ -11,8 +11,13 @@ Public Sub FIFO_ULTIMATE_OneClick()
     
     Dim startTime As Double
     Dim masterFile As String
+    Dim wbSource As Workbook
+    Dim sourceFolder As String
     
     startTime = Timer
+    Set wbSource = GetTargetWorkbook()
+    If wbSource Is Nothing Then Exit Sub
+    sourceFolder = wbSource.Path
     
     MsgBox "Starting FIFO Ultimate Process..." & vbCrLf & vbCrLf & _
            "Step 1/2: Generating master report...", vbInformation, "FIFO Ultimate"
@@ -26,10 +31,10 @@ Public Sub FIFO_ULTIMATE_OneClick()
     
     masterFile = "FIFO Expiry Report - " & todayStamp & ".xlsx"
     
-    If Dir(ThisWorkbook.Path & "\" & masterFile) = "" Then
+    If Dir(sourceFolder & "\" & masterFile) = "" Then
         masterFile = "FIFO_Expiry_Report_-_" & todayStamp & ".xlsx"
         
-        If Dir(ThisWorkbook.Path & "\" & masterFile) = "" Then
+        If Dir(sourceFolder & "\" & masterFile) = "" Then
             MsgBox "Could not find generated master report!" & vbCrLf & vbCrLf & _
                    "Looked for:" & vbCrLf & _
                    "- FIFO Expiry Report - " & todayStamp & ".xlsx" & vbCrLf & _
@@ -41,7 +46,7 @@ Public Sub FIFO_ULTIMATE_OneClick()
     MsgBox "Step 2/2: Splitting by RSM...", vbInformation, "FIFO Ultimate"
     
     Dim wbMaster As Workbook
-    Set wbMaster = Workbooks.Open(ThisWorkbook.Path & "\" & masterFile)
+    Set wbMaster = Workbooks.Open(sourceFolder & "\" & masterFile)
     
     ' STEP 3: Split by RSM
     Call SplitFIFOByRSM_Complete_Internal(wbMaster)
@@ -72,6 +77,7 @@ End Sub
 Sub SegmentExpiryItems()
     On Error GoTo ErrorHandler
     
+    Dim wbSource As Workbook
     Dim wsSource As Worksheet
     Dim wsExpired As Worksheet, ws1Month As Worksheet, ws2Month As Worksheet
     Dim ws3Month As Worksheet, wsTotal As Worksheet
@@ -92,8 +98,11 @@ Sub SegmentExpiryItems()
     Application.Calculation = xlCalculationManual
     Application.DisplayAlerts = False
     
+    Set wbSource = GetTargetWorkbook()
+    If wbSource Is Nothing Then GoTo CleanupAndExit
+    
     todayDate = Date
-    sourceFilePath = ThisWorkbook.Path
+    sourceFilePath = wbSource.Path
     
     ' Load SAP codes from SAP_Code.xlsx
     Dim wbSAP As Workbook, wsSAP As Worksheet
@@ -123,7 +132,7 @@ Sub SegmentExpiryItems()
     On Error GoTo ErrorHandler
     
     On Error Resume Next
-    Set wsSource = ThisWorkbook.Worksheets("Total")
+    Set wsSource = wbSource.Worksheets("Total")
     On Error GoTo ErrorHandler
     
     If wsSource Is Nothing Then
@@ -1284,8 +1293,12 @@ End Sub
 ' ========================================
 
 Public Sub SplitFIFOByRSM_Complete()
-    ' Standalone version - uses ThisWorkbook
-    Call SplitFIFOByRSM_Complete_Internal(ThisWorkbook)
+    Dim wbSource As Workbook
+    
+    Set wbSource = GetTargetWorkbook()
+    If wbSource Is Nothing Then Exit Sub
+    
+    Call SplitFIFOByRSM_Complete_Internal(wbSource)
 End Sub
 
 Public Sub SplitFIFOByRSM_Complete_Internal(wbSource As Workbook)
@@ -1956,4 +1969,27 @@ Private Function CleanFileName(ByVal s As String) As String
         s = Replace(s, bad, "-")
     Next
     CleanFileName = s
+End Function
+
+Private Function GetTargetWorkbook() As Workbook
+    On Error Resume Next
+    Set GetTargetWorkbook = Application.ActiveWorkbook
+    On Error GoTo 0
+    
+    If GetTargetWorkbook Is Nothing Then
+        MsgBox "No active workbook found.", vbExclamation, "FIFO Ultimate"
+        Exit Function
+    End If
+    
+    If UCase$(GetTargetWorkbook.Name) = "PERSONAL.XLSB" Then
+        MsgBox "Activate the FIFO workbook first, then run the macro." & vbCrLf & vbCrLf & _
+               "The workbook with the 'Total' sheet must be active.", vbExclamation, "FIFO Ultimate"
+        Set GetTargetWorkbook = Nothing
+        Exit Function
+    End If
+    
+    If GetTargetWorkbook.Path = "" Then
+        MsgBox "Save the active workbook first, then run the macro again.", vbExclamation, "FIFO Ultimate"
+        Set GetTargetWorkbook = Nothing
+    End If
 End Function
