@@ -27,8 +27,22 @@ To restore buttons too, also back up and import the Excel customization file:
 Excel > File > Options > Quick Access Toolbar > Import/Export
 ```
 
+Import file:
+
+```text
+Excel Customizations.exportedUI
+```
+
+Toolbar restore:
+
+1. Open Excel.
+2. Go to `File > Options > Quick Access Toolbar`.
+3. Click `Import/Export`.
+4. Choose `Import customization file`.
+5. Select `Excel Customizations.exportedUI`.
+
 Recommended backup pair:
 
 - `PERSONAL.XLSB`
-- `Excel Buttons.exportedUI`
+- `Excel Customizations.exportedUI`
 
